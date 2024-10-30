@@ -112,11 +112,24 @@ def process_pdf_for_embeddings(pdf_file):
 def process_images(uploaded_images):
     image_embeddings = []
     for uploaded_image in uploaded_images:
-        image = Image.open(uploaded_image)
+        # Save the uploaded image to a temporary file
+        temp_dir = tempfile.gettempdir()
+        image_path = os.path.join(temp_dir, uploaded_image.name)
+        with open(image_path, "wb") as f:
+            f.write(uploaded_image.read())
+        
+        # Process image for embeddings
+        image = Image.open(image_path)
         inputs = clip_processor(images=image, return_tensors="pt")
         image_embedding = clip_model.get_image_features(**inputs)
         embedding = convert_to_list(image_embedding[0].detach().numpy().astype(np.float32))
-        image_embeddings.append({"id": uploaded_image.name, "values": embedding, "metadata": {"type": "image"}})
+        
+        # Save the path in metadata
+        image_embeddings.append({
+            "id": image_path,  # Use the full path here
+            "values": embedding,
+            "metadata": {"type": "image"}
+        })
 
     # Store in Pinecone
     index = st.session_state.index
@@ -267,16 +280,15 @@ def search_query(query_text, top_k=2):
     st.write("### Image Results")
     if st.session_state.search_results["image"]:
         for result in st.session_state.search_results["image"]:
-            image_id = result['id']  # Get the image ID, which we assume is the image path
+            image_path = result['id']  # Retrieve the full path saved in metadata
             score = result['score']
         
             try:
-            # Open and display the image by its path
-                with open(image_id, 'rb') as img_file:
-                    img = Image.open(img_file)
-                    st.image(img, caption=f"Score: {score:.4f}", use_column_width=True)
+                # Open and display the image by its path
+                img = Image.open(image_path)
+                st.image(img, caption=f"Score: {score:.4f}", use_column_width=True)
             except FileNotFoundError:
-                st.write(f"Image {image_id} not found.")
+                st.write(f"Image {image_path} not found.")
     else:
         st.write("No image results found for this query.")
 
