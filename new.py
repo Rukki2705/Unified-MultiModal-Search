@@ -14,8 +14,7 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import librosa  # For audio processing
 from transformers import ClapProcessor, ClapModel
 from pydub import AudioSegment
-# Download nltk data for tokenization
-nltk.download('punkt')
+
 
 # API Key
 API_KEY = "b9003922-accb-4691-95bd-3440da22397e"
@@ -83,7 +82,7 @@ def process_pdf_for_embeddings(pdf_file):
         page_text = page.extract_text()
         text_content += page_text.replace("\n", " ") if page_text else ""
     
-    sentences = sent_tokenize(text_content)
+    sentences = [sentence.strip() for sentence in text_content.split('.') if sentence]
     text_embeddings = []
 
     for i, sentence in enumerate(sentences):
